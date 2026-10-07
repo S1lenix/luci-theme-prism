@@ -1,0 +1,7 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Native LuCI components use base.css and compat.css. */
+.zmw-body .cbi-tooltip { color:var(--text); background:var(--surface-solid); border:1px solid var(--border-2); border-radius:var(--radius-sm); box-shadow:var(--shadow-lg); }
+.zmw-body .cbi-value-error { color:var(--bad); }
+.zmw-body .cbi-section-create { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:14px; }
+.zmw-body .cbi-section-remove { margin:12px 0; }
+.zmw-body .cbi-map-descr,.zmw-body .cbi-section-descr { line-height:1.6; }

@@ -1,0 +1,31 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+function element(tag,attrs={},children=[]) {
+ return {tag,attrs,children:[...children],style:{},textContent:'',setAttribute(k,v){this.attrs[k]=v;},appendChild(n){this.children.push(n);return n;},querySelector(){return null;}};
+}
+const nodes=Object.fromEntries(['#topmenu','#tabmenu','#modemenu','#lz-page-title'].map(k=>[k,element('div')]));
+const doc={querySelector:s=>nodes[s]||null,createElementNS:(_,tag)=>element(tag)};
+const L={env:{dispatchpath:['admin','services','example-plugin','strategy','advanced'],requestpath:['admin','services','example-plugin','strategy','advanced']},url:(...parts)=>'/cgi-bin/luci/'+parts.join('/')};
+const E=(tag,attrs,children)=>element(tag,attrs,children);
+const ui={menu:{getChildren:tree=>Object.entries(tree.children||{}).map(([name,value])=>({...value,name})).sort((a,b)=>(a.order||0)-(b.order||0))}};
+const source=fs.readFileSync('htdocs/luci-static/resources/menu-prism.js','utf8');
+const window={PrismNav:{icon:()=>element('svg'),group:(title,id,items,active)=>element('details',{id,open:active},items)}};
+const theme=new Function('baseclass','ui','rpc','poll','document','L','E','_','window',source)({extend:x=>x},ui,{declare:()=>async()=>({})},{add(){}},doc,L,E,x=>x,window);
+const plugin={title:'Zapret Manager',children:{dashboard:{title:'Dashboard'},strategy:{title:'Strategies',children:{advanced:{title:'Advanced'}}}}};
+const admin={title:'Administration',children:{status:{title:'Status',children:{overview:{title:'Overview'}}},services:{title:'Services',children:{'example-plugin':plugin}}}};
+const tree={children:{admin,guest:{title:'Guest',children:{status:{title:'Status'}}}}};
+theme.render(tree);
+const groups=nodes['#topmenu'].children;
+assert.equal(groups.length,2);
+assert.equal(groups[0].attrs.open,false);
+assert.equal(groups[1].attrs.open,true,'current category opens automatically');
+const links=groups.flatMap(x=>x.children).filter(x=>x.tag==='a');
+assert.equal(links.length,2);
+assert.equal(links[0].attrs.href,'/cgi-bin/luci/admin/status/overview');
+assert.equal(links[1].attrs.href,'/cgi-bin/luci/admin/services/example-plugin');
+assert.equal(links[1].attrs['aria-current'],'page');
+assert.equal(nodes['#tabmenu'].children.length,2,'nested plugin tabs are retained');
+assert.equal(nodes['#tabmenu'].children[1].children[0].children[0].attrs.href,'/cgi-bin/luci/admin/services/example-plugin/strategy/advanced');
+assert.equal(nodes['#modemenu'].children.length,2,'alternative LuCI modes are retained');
+assert.equal(nodes['#modemenu'].style.display,'');
+console.log('PASS: dynamic navigation, active page, nested plugin tabs, alternative LuCI modes.');

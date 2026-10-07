@@ -1,0 +1,60 @@
+{# Based on LuCI Bootstrap, Apache-2.0. Original copyright retained in NOTICE.md. #}
+{%
+ import { getuid, getspnam } from 'luci.core';
+ const boardinfo = ubus.call('system', 'board') ?? {};
+ const currentPage = dispatched ?? node;
+ http.prepare_content('text/html; charset=UTF-8');
+-%}
+<!DOCTYPE html><html lang="{{ dispatcher.lang }}" data-theme="dark" data-darkmode="true" class="zm-theme-dark" data-zm-theme-checked="1"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="darkreader-lock">
+<title>{{ striptags((boardinfo.hostname ?? '?') + (currentPage?.title ? ' | ' + _(currentPage.title) : '')) }}</title>
+<script src="{{ media }}/motion.js"></script><script src="{{ media }}/navigation.js"></script><script src="{{ media }}/theme.js"></script>
+<link rel="stylesheet" href="{{ media }}/base.css"><link rel="stylesheet" href="{{ media }}/fonts.css"><link rel="stylesheet" href="{{ media }}/components.css"><link rel="stylesheet" href="{{ media }}/appearance.css"><link rel="stylesheet" href="{{ media }}/compat.css">
+<link rel="icon" type="image/svg+xml" href="{{ media }}/logo.svg">
+{% if (node?.css): %}<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">{% endif %}
+{% if (css): %}<style>{{ css }}</style>{% endif %}
+<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script><script src="{{ resource }}/cbi.js"></script>
+</head><body class="zmw-body lang_{{ dispatcher.lang }}" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
+{% if (!blank_page): %}
+<a class="lz-skip" href="#maincontent">{{ _('Skip to content') }}</a>
+<div class="zmw-shell"><aside class="zmw-side" id="lz-sidebar" aria-label="{{ _('Navigation') }}">
+<div class="zmw-brand"><a class="prism-logo" href="{{ dispatcher.build_url('admin/status/overview') }}" aria-label="Prism - OpenWrt"><img class="prism-mark" src="{{ media }}/logo.svg" alt=""></a><div class="zmw-brand-text"><div class="zmw-brand-name">Prism</div><div class="zmw-brand-sub">OpenWrt · LuCI</div></div><button class="zmw-icon-btn zmw-drawer-close" type="button" aria-label="{{ _('Close menu') }}"><svg class="zmw-i" data-prism-icon="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12 M6 18L18 6"/></svg></button></div>
+<nav class="zmw-nav" id="topmenu" aria-label="{{ _('Navigation') }}"></nav>
+<div class="zmw-side-foot"><div><div class="lz-side-model">{{ striptags(boardinfo.model ?? boardinfo.hostname ?? 'OpenWrt') }}</div><div class="lz-side-release">{{ striptags(boardinfo.release?.description ?? boardinfo.release?.version ?? 'OpenWrt') }}</div></div>
+<div class="zmw-mem"><div class="zmw-mem-head"><span class="zmw-mem-label">{{ _('Memory') }}</span><span class="zmw-mem-val" id="lz-memory-value">—</span></div><div class="zmw-mem-bar" role="progressbar" aria-label="{{ _('Memory') }}" aria-valuemin="0" aria-valuemax="100"><i id="lz-memory-bar"></i></div></div>
+<div class="zmw-mem-head"><span class="zmw-mem-label">{{ _('Uptime') }}</span><span class="zmw-mem-val" id="lz-uptime">—</span></div>
+<div class="prism-version">Prism <span>v0.5.0</span></div></div></aside>
+<button class="zmw-scrim" type="button" aria-label="{{ _('Close menu') }}" tabindex="-1"></button>
+<div class="zmw-main"><header class="zmw-top"><button class="zmw-icon-btn zmw-burger" type="button" aria-label="{{ _('Open menu') }}" aria-controls="lz-sidebar" aria-expanded="false"><svg class="zmw-i" data-prism-icon="menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16 M4 12h16 M4 18h16"/></svg></button><div class="zmw-titles"><h1 class="zmw-title" id="lz-page-title">{{ striptags(currentPage?.title ? _(currentPage.title) : 'OpenWrt') }}</h1><div class="zmw-sub">{{ striptags(boardinfo.model ?? boardinfo.hostname ?? 'OpenWrt') }}</div></div>
+<div class="zmw-top-actions"><div id="indicators"></div><button class="zmw-icon-btn" type="button" data-lz-refresh aria-label="{{ _('Refresh') }}"><svg class="zmw-i" data-prism-icon="refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 4v6h-6 M20 10a8 8 0 1 0-2.3 7.7"/></svg></button><button class="zmw-icon-btn zmw-theme-toggle" type="button" aria-label="{{ _('Theme') }}" aria-haspopup="menu" aria-expanded="false"><svg class="zmw-i" data-prism-icon="palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 0 0 0 18h2a2 2 0 0 0 1-4 2 2 0 0 1 1-4h2a3 3 0 0 0 3-3 9 9 0 0 0-9-7 M7 8h.01 M12 6h.01 M17 8h.01 M6 13h.01"/></svg></button><a class="zmw-icon-btn zmw-logout" hidden href="{{ dispatcher.build_url('admin/logout') }}"><svg class="zmw-i" data-prism-icon="logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 4H3v16h6 M9 12h12 M17 8l4 4-4 4"/></svg><span>{{ _('Log out') }}</span></a></div></header>
+<div class="zmw-view" id="zmw-view"><main id="maincontent" tabindex="-1">
+			{% if (getuid() == 0 && getspnam('root')?.pwdp === ''): %}
+				<div class="alert-message warning">
+					<h4>{{ _('No password set!') }}</h4>
+					<p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+					{% if (dispatcher.lookup("admin/system/admin")): %}
+					  <div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+					{% endif %}
+				</div>
+			{% endif %}
+
+			{% if (boardinfo.rootfs_type == "initramfs"): %}
+				<div class="alert-message warning">
+					<h4>{{ _('System running in recovery (initramfs) mode.') }}</h4>
+					<p>{{ _('No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade') }}</p>
+					{% if (dispatcher.lookup("admin/system/flash")): %}
+					  <div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/flash") }}">{{ _('Go to firmware upgrade...') }}</a></div>
+					{% endif %}
+				</div>
+			{% endif %}
+
+			<noscript>
+				<div class="alert-message warning">
+					<h4>{{ _('JavaScript required!') }}</h4>
+					<p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+				</div>
+			</noscript>
+
+
+<div id="tabmenu" style="display:none"></div>
+{% endif %}

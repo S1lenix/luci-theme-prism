@@ -1,0 +1,51 @@
+name: Packages
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['Makefile', 'htdocs/**', 'ucode/**', 'root/**', '.github/workflows/packages.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '24.10.7'
+            format: ipk
+          - version: '25.12.5'
+            format: apk
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare feed
+        run: |
+          mkdir -p feed/luci-theme-prism
+          cp -R Makefile LICENSE NOTICE.md htdocs ucode root feed/luci-theme-prism/
+      - name: Build package
+        uses: openwrt/gh-action-sdk@v8
+        env:
+          ARCH: x86_64-${{ matrix.version }}
+          FEED_DIR: ${{ github.workspace }}/feed
+          FEEDNAME: prism
+          PACKAGES: luci-theme-prism
+          V: s
+      - name: Collect package
+        run: |
+          mkdir -p dist
+          find bin/packages -type f -name 'luci-theme-prism*.${{ matrix.format }}' -exec cp -t dist {} +
+          test "$(find dist -type f | wc -l)" -eq 1
+          cd dist
+          sha256sum * > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prism-openwrt-${{ matrix.version }}
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: logs-openwrt-${{ matrix.version }}
+          path: logs/

@@ -1,0 +1,6 @@
+#!/bin/sh
+uci -q batch <<'EOF'
+set luci.themes.Prism=/luci-static/prism
+commit luci
+EOF
+exit 0

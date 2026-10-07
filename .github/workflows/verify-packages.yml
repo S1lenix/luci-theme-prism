@@ -1,0 +1,69 @@
+name: Verify packages
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Packages workflow run ID
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '24.10.7'
+            format: ipk
+          - version: '25.12.5'
+            format: apk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: prism-openwrt-${{ matrix.version }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: packages
+      - name: Verify checksum
+        working-directory: packages
+        run: sha256sum -c SHA256SUMS
+      - name: Inspect APK
+        if: matrix.format == 'apk'
+        run: |
+          mkdir -p verify/root
+          docker run --rm -v "$PWD/packages:/packages:ro" -v "$PWD/verify:/verify" alpine:edge sh -ec '
+            apk adbdump /packages/*.apk > /verify/metadata.txt
+            apk extract --allow-untrusted --destination /verify/root /packages/*.apk
+          '
+      - name: Inspect IPK
+        if: matrix.format == 'ipk'
+        run: |
+          mkdir -p verify/control verify/root
+          tar -xf packages/*.ipk -C verify/control
+          tar -xzf verify/control/data.tar.gz -C verify/root
+          tar -xzf verify/control/control.tar.gz -C verify/control
+          cp verify/control/control verify/metadata.txt
+      - name: Verify package contents
+        run: |
+          grep -Eq 'noarch|Architecture: all' verify/metadata.txt
+          grep -q luci-base verify/metadata.txt
+          grep -q luci-theme-bootstrap verify/metadata.txt
+          test -s verify/root/usr/share/ucode/luci/template/themes/prism/header.ut
+          test -s verify/root/usr/share/ucode/luci/template/themes/prism/footer.ut
+          cmp NOTICE.md verify/root/usr/share/doc/luci-theme-prism/NOTICE.md
+          cmp LICENSE verify/root/usr/share/doc/luci-theme-prism/LICENSE
+          diff -r htdocs/luci-static/prism verify/root/www/luci-static/prism
+          cmp htdocs/luci-static/resources/menu-prism.js verify/root/www/luci-static/resources/menu-prism.js
+          find verify/root -type f | sort > verify/files.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-${{ matrix.format }}
+          path: |
+            verify/metadata.txt
+            verify/files.txt
+            verify/control/prerm-pkg
